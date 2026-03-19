@@ -6,6 +6,8 @@
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
 // @grant        none
+// @updateURL    https://raw.githubusercontent.com/KaiserXanderW/assd-booking-autofill/main/assd-booking-autofill.user.js
+// @downloadURL  https://raw.githubusercontent.com/KaiserXanderW/assd-booking-autofill/main/assd-booking-autofill.user.js
 // ==/UserScript==
 
 (function () {
