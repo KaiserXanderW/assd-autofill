@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.3.6
+// @version      1.3.7
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -99,15 +99,16 @@
   // ── Customer mask autofill ────────────────────────────────────────────────
   const CUSTOMER_FILLED = 'assd-customer-filled';
 
-  function selectDropdownOption(dialog, buttonId, val) {
+  function selectDropdownOption(dialog, buttonId, val, callback) {
     const btn = dialog.querySelector(`#${buttonId}`);
-    if (!btn) { console.warn(`[assd-autofill] #${buttonId} not found`); return; }
+    if (!btn) { console.warn(`[assd-autofill] #${buttonId} not found`); callback?.(); return; }
     btn.click();
     setTimeout(() => {
-      const allOptions = dialog.querySelectorAll('.dropdown-menu a');
-      console.log(`[assd-autofill] #${buttonId} dropdown (${allOptions.length} items):`,
-        [...allOptions].slice(0, 5).map(a => `val="${a.getAttribute('val')}" value="${a.getAttribute('value')}" text="${a.textContent.trim()}"`));
-      dialog.querySelector(`.dropdown-menu a[val="${val}"]`)?.click();
+      const menu   = btn.parentElement.querySelector('.dropdown-menu');
+      const option = menu?.querySelector(`a[val="${val}"]`);
+      console.log(`[assd-autofill] #${buttonId}: menu items=${menu?.querySelectorAll('a').length}, target val="${val}" found=${!!option}`);
+      option?.click();
+      callback?.();
     }, 62);
   }
 
@@ -137,8 +138,9 @@
     dialog.classList.add(CUSTOMER_FILLED);
 
     setTimeout(() => {
-      selectDropdownOption(dialog, 'nation2', 'DE');
-      selectDropdownOption(dialog, 'guestcode', '01');
+      selectDropdownOption(dialog, 'nation2', 'DE', () => {
+        selectDropdownOption(dialog, 'guestcode', '01');
+      });
     }, 200);
 
     // Inject matchcode button before #cmdsave
