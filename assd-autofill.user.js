@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.3.0
+// @version      1.3.1
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -15,10 +15,6 @@
 
   // ── Config ────────────────────────────────────────────────────────────────
   const USER = 'WEGENSTEI3';
-
-  // ── Date helpers ─────────────────────────────────────────────────────────
-  function getCurrentDay()  { return String(new Date().getDate()); }
-  function getTomorrowDay() { const d = new Date(); d.setDate(d.getDate() + 1); return String(d.getDate()); }
 
   // ── DOM helpers ──────────────────────────────────────────────────────────
   // The booking form opens inside a dialog tab; find the active one.
@@ -34,30 +30,17 @@
   }
 
   // ── Datepicker ───────────────────────────────────────────────────────────
-  function selectDateInDatepicker(activeTabDiv, triggerSelector, dayToSelect, callback) {
-    const trigger = activeTabDiv.querySelector(triggerSelector);
-    if (!trigger) {
-      console.error(`[assd-autofill] Datepicker trigger not found: ${triggerSelector}`);
-      return;
+  function setDatepickerDate(input, date) {
+    if (window.jQuery) {
+      try {
+        window.jQuery(input).datepicker('setDate', date);
+        return true;
+      } catch (e) {
+        console.error('[assd-autofill] datepicker setDate failed:', e);
+      }
     }
-    trigger.click();
-    setTimeout(() => {
-      const picker = document.querySelector('#ui-datepicker-div');
-      if (!picker) { console.error('[assd-autofill] Datepicker div not found'); return; }
-
-      let found = false;
-      picker.querySelectorAll('.ui-datepicker-calendar tbody a.ui-state-default').forEach((a) => {
-        if (a.textContent.trim() === dayToSelect) {
-          a.click();
-          found = true;
-          setTimeout(() => {
-            document.activeElement.blur();
-            callback?.();
-          }, 62);
-        }
-      });
-      if (!found) console.error(`[assd-autofill] Day ${dayToSelect} not found in datepicker`);
-    }, 62);
+    console.error('[assd-autofill] jQuery not available for datepicker');
+    return false;
   }
 
   // ── Date autofill ─────────────────────────────────────────────────────────
@@ -68,41 +51,20 @@
     const departureInput  = activeTabDiv.querySelector('input[id^="departure_ds"]');
     const arrivalHidden   = activeTabDiv.querySelector('input[id^="arrival_dp"]');
     const departureHidden = activeTabDiv.querySelector('input[id^="departure_dp"]');
-    const today           = getCurrentDay();
-    const tomorrow        = getTomorrowDay();
+
+    const today    = new Date();
+    const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
 
     const arrivalEmpty   = arrivalInput  && !arrivalInput.value.trim()  && !arrivalHidden?.value.trim();
     const departureEmpty = departureInput && !departureInput.value.trim() && !departureHidden?.value.trim();
 
-    console.log('[assd-autofill] autofillDates', {
-      today, tomorrow,
-      arrivalVisible:    arrivalInput?.value   ?? '(no element)',
-      arrivalHidden:     arrivalHidden?.value  ?? '(no element)',
-      departureVisible:  departureInput?.value ?? '(no element)',
-      departureHidden:   departureHidden?.value ?? '(no element)',
-      arrivalEmpty, departureEmpty,
-    });
+    if (arrivalEmpty)   setDatepickerDate(arrivalInput,   today);
+    if (departureEmpty) setDatepickerDate(departureInput, tomorrow);
 
-    if (arrivalEmpty) {
-      console.log('[assd-autofill] filling arrival →', today);
-      selectDateInDatepicker(activeTabDiv, '.ui-datepicker-trigger', today, () => {
-        if (departureEmpty) {
-          console.log('[assd-autofill] filling departure →', tomorrow);
-          setTimeout(() => {
-            selectDateInDatepicker(activeTabDiv, '#dep_date .ui-datepicker-trigger', tomorrow, callback);
-          }, 150);
-        } else {
-          console.log('[assd-autofill] departure already set, skipping');
-          callback?.();
-        }
-      });
-    } else if (departureEmpty) {
-      console.log('[assd-autofill] arrival already set, filling departure →', tomorrow);
-      selectDateInDatepicker(activeTabDiv, '#dep_date .ui-datepicker-trigger', tomorrow, callback);
-    } else {
-      console.log('[assd-autofill] both dates already set, skipping');
+    setTimeout(() => {
+      document.activeElement.blur();
       callback?.();
-    }
+    }, 125);
   }
 
   // ── Field autofill ────────────────────────────────────────────────────────
@@ -139,10 +101,16 @@
 
   function selectDropdownOption(dialog, buttonId, val) {
     const btn = dialog.querySelector(`#${buttonId}`);
-    if (!btn || btn.value === val) return;
+    if (!btn) { console.warn(`[assd-autofill] dropdown button #${buttonId} not found`); return; }
     btn.click();
     setTimeout(() => {
-      btn.closest('.btn-group').querySelector(`.dropdown-menu a[val="${val}"]`)?.click();
+      const group  = btn.closest('.btn-group') ?? btn.parentElement;
+      const option = group?.querySelector(`.dropdown-menu a[val="${val}"]`);
+      if (!option) {
+        console.warn(`[assd-autofill] dropdown option val="${val}" not found in #${buttonId}`, group?.innerHTML);
+        return;
+      }
+      option.click();
     }, 62);
   }
 
@@ -186,7 +154,7 @@
       btn.textContent = 'Matchcode';
       btn.style.cssText = 'margin-right: 4px;';
       btn.addEventListener('click', () => triggerMatchcodeSearch(dialog));
-      saveBtn.before(btn);
+      saveBtn.after(btn);
     }
   }
 
