@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.1.0
+// @version      1.1.1
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -61,14 +61,22 @@
   function autofillDates(activeTabDiv, callback) {
     if (!activeTabDiv) { console.error('[assd-autofill] Active tab not found'); return; }
 
-    const arrivalInput   = activeTabDiv.querySelector('input[id^="arrival_ds"]');
-    const departureInput = activeTabDiv.querySelector('input[id^="departure_ds"]');
-    const today          = getCurrentDay();
-    const tomorrow       = getTomorrowDay();
+    const arrivalInput    = activeTabDiv.querySelector('input[id^="arrival_ds"]');
+    const departureInput  = activeTabDiv.querySelector('input[id^="departure_ds"]');
+    const arrivalHidden   = activeTabDiv.querySelector('input[id^="arrival_dp"]');
+    const departureHidden = activeTabDiv.querySelector('input[id^="departure_dp"]');
+    const today           = getCurrentDay();
+    const tomorrow        = getTomorrowDay();
 
-    if (arrivalInput && !arrivalInput.value.trim()) {
+    // Check both the visible text input and the hidden date value — the hidden field
+    // is pre-filled by the system when opening a new booking from reservierungen,
+    // even though the visible input appears empty.
+    const arrivalEmpty   = arrivalInput  && !arrivalInput.value.trim()  && !arrivalHidden?.value.trim();
+    const departureEmpty = departureInput && !departureInput.value.trim() && !departureHidden?.value.trim();
+
+    if (arrivalEmpty) {
       selectDateInDatepicker(activeTabDiv, '.ui-datepicker-trigger', today, () => {
-        if (departureInput && !departureInput.value.trim()) {
+        if (departureEmpty) {
           setTimeout(() => {
             selectDateInDatepicker(activeTabDiv, '#dep_date .ui-datepicker-trigger', tomorrow, callback);
           }, 150);
@@ -76,7 +84,7 @@
           callback?.();
         }
       });
-    } else if (departureInput && !departureInput.value.trim()) {
+    } else if (departureEmpty) {
       selectDateInDatepicker(activeTabDiv, '#dep_date .ui-datepicker-trigger', tomorrow, callback);
     } else {
       callback?.();
