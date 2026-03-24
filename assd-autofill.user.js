@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.2.1
+// @version      1.2.2
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -71,25 +71,36 @@
     const today           = getCurrentDay();
     const tomorrow        = getTomorrowDay();
 
-    // Check both the visible text input and the hidden date value — the hidden field
-    // is pre-filled by the system when opening a new booking from reservierungen,
-    // even though the visible input appears empty.
     const arrivalEmpty   = arrivalInput  && !arrivalInput.value.trim()  && !arrivalHidden?.value.trim();
     const departureEmpty = departureInput && !departureInput.value.trim() && !departureHidden?.value.trim();
 
+    console.log('[assd-autofill] autofillDates', {
+      today, tomorrow,
+      arrivalVisible:    arrivalInput?.value   ?? '(no element)',
+      arrivalHidden:     arrivalHidden?.value  ?? '(no element)',
+      departureVisible:  departureInput?.value ?? '(no element)',
+      departureHidden:   departureHidden?.value ?? '(no element)',
+      arrivalEmpty, departureEmpty,
+    });
+
     if (arrivalEmpty) {
+      console.log('[assd-autofill] filling arrival →', today);
       selectDateInDatepicker(activeTabDiv, '.ui-datepicker-trigger', today, () => {
         if (departureEmpty) {
+          console.log('[assd-autofill] filling departure →', tomorrow);
           setTimeout(() => {
             selectDateInDatepicker(activeTabDiv, '#dep_date .ui-datepicker-trigger', tomorrow, callback);
           }, 150);
         } else {
+          console.log('[assd-autofill] departure already set, skipping');
           callback?.();
         }
       });
     } else if (departureEmpty) {
+      console.log('[assd-autofill] arrival already set, filling departure →', tomorrow);
       selectDateInDatepicker(activeTabDiv, '#dep_date .ui-datepicker-trigger', tomorrow, callback);
     } else {
+      console.log('[assd-autofill] both dates already set, skipping');
       callback?.();
     }
   }
