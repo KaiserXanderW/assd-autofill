@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.3.4
+// @version      1.3.5
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -104,7 +104,7 @@
     if (!btn || btn.value === val) return;
     btn.click();
     setTimeout(() => {
-      btn.closest('.btn-group').querySelector(`.dropdown-menu a[val="${val}"]`)?.click();
+      dialog.querySelector(`.dropdown-menu a[val="${val}"]`)?.click();
     }, 62);
   }
 
