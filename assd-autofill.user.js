@@ -1,13 +1,13 @@
 // ==UserScript==
-// @name         assd-booking-autofill
+// @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.0.0
-// @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode
+// @version      1.1.0
+// @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/KaiserXanderW/assd-booking-autofill/main/assd-booking-autofill.user.js
-// @downloadURL  https://raw.githubusercontent.com/KaiserXanderW/assd-booking-autofill/main/assd-booking-autofill.user.js
+// @updateURL    https://raw.githubusercontent.com/KaiserXanderW/assd-autofill/main/assd-autofill.user.js
+// @downloadURL  https://raw.githubusercontent.com/KaiserXanderW/assd-autofill/main/assd-autofill.user.js
 // ==/UserScript==
 
 (function () {
@@ -34,13 +34,13 @@
   function selectDateInDatepicker(activeTabDiv, triggerSelector, dayToSelect, callback) {
     const trigger = activeTabDiv.querySelector(triggerSelector);
     if (!trigger) {
-      console.error(`[assd-booking-autofill] Datepicker trigger not found: ${triggerSelector}`);
+      console.error(`[assd-autofill] Datepicker trigger not found: ${triggerSelector}`);
       return;
     }
     trigger.click();
     setTimeout(() => {
       const picker = document.querySelector('#ui-datepicker-div');
-      if (!picker) { console.error('[assd-booking-autofill] Datepicker div not found'); return; }
+      if (!picker) { console.error('[assd-autofill] Datepicker div not found'); return; }
 
       let found = false;
       picker.querySelectorAll('.ui-datepicker-calendar tbody a.ui-state-default').forEach((a) => {
@@ -53,13 +53,13 @@
           }, 62);
         }
       });
-      if (!found) console.error(`[assd-booking-autofill] Day ${dayToSelect} not found in datepicker`);
+      if (!found) console.error(`[assd-autofill] Day ${dayToSelect} not found in datepicker`);
     }, 62);
   }
 
   // ── Date autofill ─────────────────────────────────────────────────────────
   function autofillDates(activeTabDiv, callback) {
-    if (!activeTabDiv) { console.error('[assd-booking-autofill] Active tab not found'); return; }
+    if (!activeTabDiv) { console.error('[assd-autofill] Active tab not found'); return; }
 
     const arrivalInput   = activeTabDiv.querySelector('input[id^="arrival_ds"]');
     const departureInput = activeTabDiv.querySelector('input[id^="departure_ds"]');
@@ -85,7 +85,7 @@
 
   // ── Field autofill ────────────────────────────────────────────────────────
   function fillFormFields(activeTabDiv, callback) {
-    if (!activeTabDiv) { console.error('[assd-booking-autofill] Active tab not found'); return; }
+    if (!activeTabDiv) { console.error('[assd-autofill] Active tab not found'); return; }
 
     setTimeout(() => {
       const guestBox = activeTabDiv.querySelector('#guest_r');
@@ -112,6 +112,55 @@
     }, 125);
   }
 
+  // ── Customer mask autofill ────────────────────────────────────────────────
+  const CUSTOMER_FILLED = 'assd-customer-filled';
+
+  function selectDropdownOption(dialog, buttonId, val) {
+    const btn = dialog.querySelector(`#${buttonId}`);
+    if (!btn || btn.value === val) return;
+    btn.click();
+    setTimeout(() => {
+      btn.closest('.btn-group').querySelector(`.dropdown-menu a[val="${val}"]`)?.click();
+    }, 62);
+  }
+
+  function autofillCustomerMask(dialog) {
+    if (dialog.classList.contains(CUSTOMER_FILLED)) return;
+    dialog.classList.add(CUSTOMER_FILLED);
+
+    setTimeout(() => {
+      selectDropdownOption(dialog, 'nation2', 'DE');
+      selectDropdownOption(dialog, 'guestcode', '01');
+
+      const lastname  = dialog.querySelector('#lastname')?.value?.trim()  ?? '';
+      const firstname = dialog.querySelector('#firstname')?.value?.trim() ?? '';
+      const matchInput = dialog.querySelector('#match1');
+
+      if (matchInput && (lastname || firstname)) {
+        const query = [lastname, firstname].filter(Boolean).join(', ').toUpperCase();
+        matchInput.value = query;
+        matchInput.dispatchEvent(new Event('input',  { bubbles: true }));
+        matchInput.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+
+        // Wait for autocomplete to populate, then pick the 3rd item
+        setTimeout(() => {
+          const items = document.querySelectorAll('.ui-autocomplete:not([style*="display: none"]) .ui-menu-item');
+          if (items.length >= 3)      items[2].click();
+          else if (items.length > 0)  items[items.length - 1].click();
+          else console.warn('[assd-autofill] Matchcode autocomplete produced no items');
+        }, 350);
+      }
+    }, 200);
+  }
+
+  function watchForCustomerMaskDialog() {
+    new MutationObserver(() => {
+      document.querySelectorAll(`.ui-dialog:not(.${CUSTOMER_FILLED})`).forEach((dialog) => {
+        if (dialog.querySelector('.guestName')) autofillCustomerMask(dialog);
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
   // ── Main flow ─────────────────────────────────────────────────────────────
   function autofillForm() {
     const activeTabDiv = findActiveTab();
@@ -135,4 +184,5 @@
   }
 
   watchForCmdGuestButton();
+  watchForCustomerMaskDialog();
 })();
