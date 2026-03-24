@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.1.1
+// @version      1.2.0
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -12,6 +12,9 @@
 
 (function () {
   'use strict';
+
+  // ── Config ────────────────────────────────────────────────────────────────
+  const USER = 'WEGENSTEI3';
 
   // ── Date helpers ─────────────────────────────────────────────────────────
   function getCurrentDay()  { return String(new Date().getDate()); }
@@ -169,6 +172,55 @@
     }).observe(document.body, { childList: true, subtree: true });
   }
 
+  // ── Memo buttons ─────────────────────────────────────────────────────────
+  function getMemoTimestamp() {
+    const now = new Date();
+    const dd  = String(now.getDate()).padStart(2, '0');
+    const mm  = String(now.getMonth() + 1).padStart(2, '0');
+    const yy  = String(now.getFullYear()).slice(-2);
+    return `${dd}.${mm}.${yy} -  - ${USER}`;
+  }
+
+  function insertMemoTimestamp(textarea) {
+    const stamp = getMemoTimestamp() + '\n';
+    textarea.value = stamp + textarea.value;
+    // Place cursor between the two dashes: "DD.MM.YY - " = 11 chars
+    const cursorPos = stamp.indexOf(' -  - ') + ' - '.length;
+    textarea.setSelectionRange(cursorPos, cursorPos);
+    textarea.focus();
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function injectMemoButtons(dialog) {
+    const memo = dialog.querySelector('#memo');
+    if (!memo || dialog.querySelector('.assd-memo-injected')) return;
+
+    const pickerBtn = dialog.querySelector('a.cmd_button.picker[field="memo"]');
+    if (!pickerBtn) return;
+
+    const btn = document.createElement('a');
+    btn.className = 'cmd_button picker assd-memo-injected';
+    btn.title     = 'Datum + Kürzel einfügen';
+    btn.textContent = 'T';
+    btn.style.cssText = 'cursor:pointer; margin-left:4px;';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      insertMemoTimestamp(memo);
+    });
+
+    pickerBtn.after(btn);
+  }
+
+  function watchForMemoField() {
+    new MutationObserver(() => {
+      document.querySelectorAll('.ui-dialog').forEach((dialog) => {
+        if (dialog.querySelector('#memo') && !dialog.querySelector('.assd-memo-injected')) {
+          injectMemoButtons(dialog);
+        }
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
   // ── Main flow ─────────────────────────────────────────────────────────────
   function autofillForm() {
     const activeTabDiv = findActiveTab();
@@ -193,4 +245,5 @@
 
   watchForCmdGuestButton();
   watchForCustomerMaskDialog();
+  watchForMemoField();
 })();
