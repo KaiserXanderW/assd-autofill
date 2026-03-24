@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.2.0
+// @version      1.2.1
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -181,6 +181,15 @@
     return `${dd}.${mm}.${yy} -  - ${USER}`;
   }
 
+  function insertAtCursor(textarea, text) {
+    const start = textarea.selectionStart;
+    const end   = textarea.selectionEnd;
+    textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
+    textarea.setSelectionRange(start + text.length, start + text.length);
+    textarea.focus();
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
   function insertMemoTimestamp(textarea) {
     const stamp = getMemoTimestamp() + '\n';
     textarea.value = stamp + textarea.value;
@@ -198,17 +207,28 @@
     const pickerBtn = dialog.querySelector('a.cmd_button.picker[field="memo"]');
     if (!pickerBtn) return;
 
-    const btn = document.createElement('a');
-    btn.className = 'cmd_button picker assd-memo-injected';
-    btn.title     = 'Datum + Kürzel einfügen';
-    btn.textContent = 'T';
-    btn.style.cssText = 'cursor:pointer; margin-left:4px;';
-    btn.addEventListener('click', (e) => {
+    const parkingBtn = document.createElement('a');
+    parkingBtn.className  = 'cmd_button picker assd-memo-injected';
+    parkingBtn.title      = 'Parking added as per sender';
+    parkingBtn.textContent = 'P';
+    parkingBtn.style.cssText = 'cursor:pointer; margin-left:4px;';
+    parkingBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      insertAtCursor(memo, 'Parking added as per sender');
+    });
+
+    const timestampBtn = document.createElement('a');
+    timestampBtn.className  = 'cmd_button picker assd-memo-injected';
+    timestampBtn.title      = 'Datum + Kürzel einfügen';
+    timestampBtn.textContent = 'T';
+    timestampBtn.style.cssText = 'cursor:pointer; margin-left:4px;';
+    timestampBtn.addEventListener('click', (e) => {
       e.preventDefault();
       insertMemoTimestamp(memo);
     });
 
-    pickerBtn.after(btn);
+    pickerBtn.after(parkingBtn);
+    parkingBtn.after(timestampBtn);
   }
 
   function watchForMemoField() {
