@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.3.3
+// @version      1.3.4
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -101,18 +101,10 @@
 
   function selectDropdownOption(dialog, buttonId, val) {
     const btn = dialog.querySelector(`#${buttonId}`);
-    if (!btn) { console.warn(`[assd-autofill] dropdown button #${buttonId} not found`); return; }
+    if (!btn || btn.value === val) return;
     btn.click();
     setTimeout(() => {
-      const group  = btn.closest('.btn-group') ?? btn.parentElement;
-      const allOptions = group?.querySelectorAll('.dropdown-menu a');
-      console.log(`[assd-autofill] #${buttonId} dropdown items:`, allOptions?.length, [...(allOptions ?? [])].slice(0, 5).map(a => `val="${a.getAttribute('val')}" value="${a.getAttribute('value')}" text="${a.textContent.trim()}"`));
-      const option = group?.querySelector(`.dropdown-menu a[val="${val}"]`);
-      if (!option) {
-        console.warn(`[assd-autofill] dropdown option val="${val}" not found in #${buttonId}`);
-        return;
-      }
-      option.click();
+      btn.closest('.btn-group').querySelector(`.dropdown-menu a[val="${val}"]`)?.click();
     }, 62);
   }
 
@@ -142,7 +134,6 @@
     dialog.classList.add(CUSTOMER_FILLED);
 
     setTimeout(() => {
-      console.log('[assd-autofill] autofillCustomerMask: filling dropdowns', dialog.querySelector('#nation2'), dialog.querySelector('#guestcode'));
       selectDropdownOption(dialog, 'nation2', 'DE');
       selectDropdownOption(dialog, 'guestcode', '01');
     }, 200);
