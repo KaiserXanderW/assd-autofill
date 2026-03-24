@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.2.2
+// @version      1.3.0
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -146,6 +146,27 @@
     }, 62);
   }
 
+  function triggerMatchcodeSearch(dialog) {
+    const lastname   = dialog.querySelector('#lastname')?.value?.trim()  ?? '';
+    const firstname  = dialog.querySelector('#firstname')?.value?.trim() ?? '';
+    const matchInput = dialog.querySelector('#match1');
+
+    if (!matchInput) { console.warn('[assd-autofill] #match1 not found'); return; }
+    if (!lastname && !firstname) { console.warn('[assd-autofill] No name entered yet'); return; }
+
+    const query = [lastname, firstname].filter(Boolean).join(', ').toUpperCase();
+    matchInput.value = query;
+    matchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    matchInput.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+
+    setTimeout(() => {
+      const items = document.querySelectorAll('.ui-autocomplete:not([style*="display: none"]) .ui-menu-item');
+      if (items.length >= 3)      items[2].click();
+      else if (items.length > 0)  items[items.length - 1].click();
+      else console.warn('[assd-autofill] Matchcode autocomplete produced no items');
+    }, 350);
+  }
+
   function autofillCustomerMask(dialog) {
     if (dialog.classList.contains(CUSTOMER_FILLED)) return;
     dialog.classList.add(CUSTOMER_FILLED);
@@ -153,26 +174,20 @@
     setTimeout(() => {
       selectDropdownOption(dialog, 'nation2', 'DE');
       selectDropdownOption(dialog, 'guestcode', '01');
-
-      const lastname  = dialog.querySelector('#lastname')?.value?.trim()  ?? '';
-      const firstname = dialog.querySelector('#firstname')?.value?.trim() ?? '';
-      const matchInput = dialog.querySelector('#match1');
-
-      if (matchInput && (lastname || firstname)) {
-        const query = [lastname, firstname].filter(Boolean).join(', ').toUpperCase();
-        matchInput.value = query;
-        matchInput.dispatchEvent(new Event('input',  { bubbles: true }));
-        matchInput.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
-
-        // Wait for autocomplete to populate, then pick the 3rd item
-        setTimeout(() => {
-          const items = document.querySelectorAll('.ui-autocomplete:not([style*="display: none"]) .ui-menu-item');
-          if (items.length >= 3)      items[2].click();
-          else if (items.length > 0)  items[items.length - 1].click();
-          else console.warn('[assd-autofill] Matchcode autocomplete produced no items');
-        }, 350);
-      }
     }, 200);
+
+    // Inject matchcode button before #cmdsave
+    const saveBtn = dialog.querySelector('#cmdsave');
+    if (saveBtn && !dialog.querySelector('.assd-matchcode-btn')) {
+      const btn = document.createElement('button');
+      btn.className  = 'cmd_button assd-matchcode-btn';
+      btn.type       = 'button';
+      btn.title      = 'Matchcode aus Namen suchen';
+      btn.textContent = 'Matchcode';
+      btn.style.cssText = 'margin-right: 4px;';
+      btn.addEventListener('click', () => triggerMatchcodeSearch(dialog));
+      saveBtn.before(btn);
+    }
   }
 
   function watchForCustomerMaskDialog() {
