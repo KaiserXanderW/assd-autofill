@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.3.7
+// @version      1.3.8
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -180,7 +180,8 @@
     textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
     textarea.setSelectionRange(start + text.length, start + text.length);
     textarea.focus();
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.dispatchEvent(new Event('input',  { bubbles: true }));
+    textarea.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function insertMemoTimestamp(textarea) {
@@ -190,7 +191,8 @@
     const cursorPos = stamp.indexOf(' -  - ') + ' - '.length;
     textarea.setSelectionRange(cursorPos, cursorPos);
     textarea.focus();
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.dispatchEvent(new Event('input',  { bubbles: true }));
+    textarea.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function injectMemoButtons(dialog) {
