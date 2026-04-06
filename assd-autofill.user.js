@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.3.8
+// @version      1.4.0
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -195,6 +195,16 @@
     textarea.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  function makeMemoBtn(label, title, onClick) {
+    const btn = document.createElement('a');
+    btn.className    = 'cmd_button picker assd-memo-injected';
+    btn.title        = title;
+    btn.textContent  = label;
+    btn.style.cssText = 'cursor:pointer; margin-left:4px;';
+    btn.addEventListener('click', (e) => { e.preventDefault(); onClick(); });
+    return btn;
+  }
+
   function injectMemoButtons(dialog) {
     const memo = dialog.querySelector('#memo');
     if (!memo || dialog.querySelector('.assd-memo-injected')) return;
@@ -202,28 +212,20 @@
     const pickerBtn = dialog.querySelector('a.cmd_button.picker[field="memo"]');
     if (!pickerBtn) return;
 
-    const parkingBtn = document.createElement('a');
-    parkingBtn.className  = 'cmd_button picker assd-memo-injected';
-    parkingBtn.title      = 'Parking added as per sender';
-    parkingBtn.textContent = 'P';
-    parkingBtn.style.cssText = 'cursor:pointer; margin-left:4px;';
-    parkingBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      insertAtCursor(memo, 'Parking added as per sender');
-    });
+    const buttons = [
+      makeMemoBtn('📅 Stamp',       'Datum + Kürzel einfügen',
+        () => insertMemoTimestamp(memo)),
+      makeMemoBtn('Parking',        'Parking added as per sender',
+        () => insertAtCursor(memo, 'Parking added as per sender')),
+      makeMemoBtn('Room Fixed',     'Room allocation failed – reassigned',
+        () => insertAtCursor(memo, 'Room allocation failed – reassigned')),
+      makeMemoBtn('No Parking',     'Parking requested as per sender, but none available',
+        () => insertAtCursor(memo, 'Parking requested as per sender, but none available')),
+      makeMemoBtn('Part. Parking',  'Parking requested as per sender; not available for full stay – added for available days only',
+        () => insertAtCursor(memo, 'Parking requested as per sender; not available for full stay – added for available days only')),
+    ];
 
-    const timestampBtn = document.createElement('a');
-    timestampBtn.className  = 'cmd_button picker assd-memo-injected';
-    timestampBtn.title      = 'Datum + Kürzel einfügen';
-    timestampBtn.textContent = 'T';
-    timestampBtn.style.cssText = 'cursor:pointer; margin-left:4px;';
-    timestampBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      insertMemoTimestamp(memo);
-    });
-
-    pickerBtn.after(parkingBtn);
-    parkingBtn.after(timestampBtn);
+    buttons.reduce((prev, btn) => { prev.after(btn); return btn; }, pickerBtn);
   }
 
   function watchForMemoField() {
