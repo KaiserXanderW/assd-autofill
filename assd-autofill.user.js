@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.4.3
+// @version      1.4.4
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -200,7 +200,7 @@
     btn.className    = 'cmd_button picker assd-memo-injected';
     btn.title        = title;
     btn.textContent  = label;
-    btn.style.cssText = 'cursor:pointer; direction: ltr; margin-left:4px; padding: 2px 8px;';
+    btn.style.cssText = 'cursor:pointer; margin-bottom:4px; padding: 2px 8px;';
     btn.addEventListener('click', (e) => { e.preventDefault(); onClick(); });
     return btn;
   }
@@ -226,8 +226,8 @@
     ];
 
     const wrapper = document.createElement('span');
-    wrapper.style.cssText = 'display: inline-block; direction: rtl; white-space: nowrap;';
-    [...buttons].reverse().forEach(btn => wrapper.appendChild(btn));
+    wrapper.style.cssText = 'display: flex; flex-direction: column; align-items: flex-end;';
+    buttons.forEach(btn => wrapper.appendChild(btn));
     pickerBtn.after(wrapper);
   }
 
