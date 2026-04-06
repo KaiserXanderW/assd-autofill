@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.4.5
+// @version      1.4.6
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -207,7 +207,8 @@
 
   function injectMemoButtons(dialog) {
     const memo = dialog.querySelector('#memo');
-    if (!memo || dialog.querySelector('.assd-memo-injected')) return;
+    if (!memo || dialog.dataset.assdMemoInjected) return;
+    dialog.dataset.assdMemoInjected = '1';
 
     const pickerBtn = dialog.querySelector('a.cmd_button.picker[field="memo"]');
     if (!pickerBtn) return;
@@ -226,16 +227,25 @@
     ];
 
     const wrapper = document.createElement('span');
-    wrapper.style.cssText = 'position: absolute; right: 0; display: flex; flex-direction: column; align-items: flex-end; z-index: 1000;';
-    pickerBtn.parentElement.style.position = 'relative';
+    const rect = pickerBtn.getBoundingClientRect();
+    wrapper.style.cssText = `position: fixed; top: ${rect.bottom}px; right: ${window.innerWidth - rect.right}px; display: flex; flex-direction: column; align-items: flex-end; z-index: 9999;`;
     buttons.forEach(btn => wrapper.appendChild(btn));
-    pickerBtn.after(wrapper);
+    document.body.appendChild(wrapper);
+
+    // Remove wrapper when dialog is closed/hidden
+    new MutationObserver((_, obs) => {
+      if (!document.body.contains(dialog) || dialog.style.display === 'none') {
+        wrapper.remove();
+        delete dialog.dataset.assdMemoInjected;
+        obs.disconnect();
+      }
+    }).observe(document.body, { childList: true, subtree: false, attributes: true, attributeFilter: ['style'] });
   }
 
   function watchForMemoField() {
     new MutationObserver(() => {
       document.querySelectorAll('.ui-dialog').forEach((dialog) => {
-        if (dialog.querySelector('#memo') && !dialog.querySelector('.assd-memo-injected')) {
+        if (dialog.querySelector('#memo') && !dialog.dataset.assdMemoInjected) {
           injectMemoButtons(dialog);
         }
       });
