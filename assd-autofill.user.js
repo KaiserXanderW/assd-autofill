@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.4.6
+// @version      1.4.7
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -227,10 +227,20 @@
     ];
 
     const wrapper = document.createElement('span');
-    const rect = pickerBtn.getBoundingClientRect();
-    wrapper.style.cssText = `position: fixed; top: ${rect.bottom}px; right: ${window.innerWidth - rect.right}px; display: flex; flex-direction: column; align-items: flex-end; z-index: 9999;`;
+    wrapper.style.cssText = 'position: fixed; visibility: hidden; display: flex; flex-direction: column; align-items: flex-end; z-index: 9999;';
     buttons.forEach(btn => wrapper.appendChild(btn));
     document.body.appendChild(wrapper);
+
+    setTimeout(() => {
+      const rect = pickerBtn.getBoundingClientRect();
+      if (rect.right > 0) {
+        wrapper.style.top   = rect.bottom + 'px';
+        wrapper.style.right = (window.innerWidth - rect.right) + 'px';
+        wrapper.style.visibility = 'visible';
+      } else {
+        console.warn('[assd-autofill] picker button not yet visible, memo buttons hidden');
+      }
+    }, 100);
 
     // Remove wrapper when dialog is closed/hidden
     new MutationObserver((_, obs) => {
