@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.4.8
+// @version      1.4.9
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -224,33 +224,15 @@
     ];
 
     const wrapper = document.createElement('span');
-    wrapper.style.cssText = 'position: fixed; visibility: hidden; display: flex; flex-direction: column; align-items: flex-end; z-index: 9999;';
+    wrapper.style.cssText = 'display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; vertical-align: top; margin-left: 4px;';
     buttons.forEach(btn => wrapper.appendChild(btn));
-    document.body.appendChild(wrapper);
 
-    setTimeout(() => {
-      const pickerBtn = dialog.querySelector('a.cmd_button.picker[field="memo"]');
-      const anchor = pickerBtn || memo;
-      if (!pickerBtn) console.warn('[assd-autofill] picker[field="memo"] not found, anchoring to #memo textarea');
-      const rect = anchor.getBoundingClientRect();
-      if (rect.width > 0 || rect.height > 0) {
-        wrapper.style.top   = rect.bottom + 'px';
-        wrapper.style.right = (window.innerWidth - rect.right) + 'px';
-        wrapper.style.visibility = 'visible';
-        console.log('[assd-autofill] memo buttons injected at', wrapper.style.top, wrapper.style.right);
-      } else {
-        console.warn('[assd-autofill] anchor element has no size yet, memo buttons hidden');
-      }
-    }, 300);
-
-    // Remove wrapper when dialog is closed/hidden
-    new MutationObserver((_, obs) => {
-      if (!document.body.contains(dialog) || dialog.style.display === 'none') {
-        wrapper.remove();
-        delete dialog.dataset.assdMemoInjected;
-        obs.disconnect();
-      }
-    }).observe(document.body, { childList: true, subtree: false, attributes: true, attributeFilter: ['style'] });
+    // Insert inline after the picker button (or after the memo textarea)
+    const pickerBtn = dialog.querySelector('a.cmd_button.picker[field="memo"]');
+    const anchor = pickerBtn || memo;
+    if (!pickerBtn) console.warn('[assd-autofill] picker[field="memo"] not found, anchoring after #memo');
+    anchor.after(wrapper);
+    console.log('[assd-autofill] memo buttons injected after', anchor.id || anchor.className);
   }
 
   function watchForMemoField() {
