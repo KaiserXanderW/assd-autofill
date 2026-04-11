@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         assd-autofill
 // @namespace    Violentmonkey Scripts
-// @version      1.4.12
+// @version      1.4.13
 // @description  Autofills new booking form: arrival (today), departure (tomorrow), guests, user, regcode. Also autofills customer mask.
 // @match        https://*.assd.com/*
 // @match        https://*.assd.com:9443/*
@@ -200,7 +200,7 @@
     btn.className    = 'cmd_button picker assd-memo-injected';
     btn.title        = title;
     btn.textContent  = label;
-    btn.style.cssText = 'cursor:pointer; padding: 2px 8px;';
+    btn.style.cssText = 'cursor:pointer; margin-bottom:4px; padding: 2px 8px; width:50px;';
     btn.addEventListener('click', (e) => { e.preventDefault(); onClick(); });
     return btn;
   }
@@ -223,13 +223,16 @@
         () => insertAtCursor(memo, 'Parking requested as per sender; not available for full stay – added for available days only')),
     ];
 
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;';
+    const wrapper = document.createElement('span');
+    wrapper.style.cssText = 'display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; vertical-align: top; margin-left: -50px;';
     buttons.forEach(btn => wrapper.appendChild(btn));
 
-    // Insert as a block row directly below the memo textarea
-    memo.after(wrapper);
-    console.log('[assd-autofill] memo buttons injected below #memo');
+    // Insert inline after the picker button (or after the memo textarea)
+    const pickerBtn = dialog.querySelector('a.cmd_button.picker[field="memo"]');
+    const anchor = pickerBtn || memo;
+    if (!pickerBtn) console.warn('[assd-autofill] picker[field="memo"] not found, anchoring after #memo');
+    anchor.after(wrapper);
+    console.log('[assd-autofill] memo buttons injected after', anchor.id || anchor.className);
   }
 
   function watchForMemoField() {
